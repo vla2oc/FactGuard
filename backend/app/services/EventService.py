@@ -1,7 +1,7 @@
 import pandas as pd
 import os
 from typing import List, Optional
-from ..schemas.event import EventQueryParams, EventOut
+from ..schemas.event import EventOut, EventQueryParams
 
 
 class EventService:
@@ -54,11 +54,26 @@ class EventService:
         if "date" in self.df.columns:
             self.df["date"] = pd.to_datetime(self.df["date"], errors="coerce")
 
-        # Конвертируем числовые колонки
+        # Обрабатываем числовые колонки
         numeric_columns = ["events", "fatalities", "population_exposure", "lat", "lon"]
         for col in numeric_columns:
             if col in self.df.columns:
-                self.df[col] = pd.to_numeric(self.df[col], errors="coerce")
+                # Заменяем пустые значения на 0, затем конвертируем в числа
+                self.df[col] = pd.to_numeric(self.df[col], errors="coerce").fillna(0)
+
+        # Обрабатываем строковые колонки
+        string_columns = [
+            "region",
+            "country",
+            "city",
+            "event_type",
+            "sub_event_type",
+            "disorder_type",
+        ]
+        for col in string_columns:
+            if col in self.df.columns:
+                # Заменяем пустые значения на пустую строку
+                self.df[col] = self.df[col].fillna("")
 
         # Добавляем индекс как ID
         self.df.reset_index(drop=True, inplace=True)
@@ -98,30 +113,34 @@ class EventService:
                 )
             ]
 
-        # Фильтр по регионам
-        if params.regions:
-            filtered_df = filtered_df[filtered_df["region"].isin(params.regions)]
-
-        # Фильтр по городам
-        if params.cities:
-            filtered_df = filtered_df[filtered_df["city"].isin(params.cities)]
-
-        # Фильтр по минимальному количеству жертв
-        if params.min_fatalities is not None:
-            filtered_df = filtered_df[
-                filtered_df["fatalities"] >= params.min_fatalities
-            ]
-
-        # Фильтр по максимальному количеству жертв
-        if params.max_fatalities is not None:
-            filtered_df = filtered_df[
-                filtered_df["fatalities"] <= params.max_fatalities
-            ]
-
         # Конвертируем в список EventOut
         events = []
         for idx, row in filtered_df.iterrows():
             try:
+                # Безопасное извлечение числовых значений
+                events_count = row.get("events", 0)
+                fatalities_count = row.get("fatalities", 0)
+                population_exp = row.get("population_exposure", 0)
+                latitude = row.get("lat", 0.0)
+                longitude = row.get("lon", 0.0)
+
+                # Конвертируем в числа, если это еще не сделано
+                events_count = int(events_count) if pd.notna(events_count) else 0
+                fatalities_count = (
+                    int(fatalities_count) if pd.notna(fatalities_count) else 0
+                )
+                population_exp = int(population_exp) if pd.notna(population_exp) else 0
+                latitude = float(latitude) if pd.notna(latitude) else 0.0
+                longitude = float(longitude) if pd.notna(longitude) else 0.0
+
+                # Безопасное извлечение строковых значений
+                disorder_type_val = row.get("disorder_type", "")
+                disorder_type_val = (
+                    str(disorder_type_val)
+                    if pd.notna(disorder_type_val) and disorder_type_val != ""
+                    else None
+                )
+
                 event = EventOut(
                     id=int(idx),
                     region=str(row.get("region", "")),
@@ -129,14 +148,12 @@ class EventService:
                     city=str(row.get("city", "")),
                     event_type=str(row.get("event_type", "")),
                     sub_event_type=str(row.get("sub_event_type", "")),
-                    events=int(row.get("events", 0)),
-                    fatalities=int(row.get("fatalities", 0)),
-                    population_exposure=int(row.get("population_exposure", 0)),
-                    disorder_type=str(row.get("disorder_type", ""))
-                    if pd.notna(row.get("disorder_type"))
-                    else None,
-                    lat=float(row.get("lat", 0.0)),
-                    lon=float(row.get("lon", 0.0)),
+                    events=events_count,
+                    fatalities=fatalities_count,
+                    population_exposure=population_exp,
+                    disorder_type=disorder_type_val,
+                    lat=latitude,
+                    lon=longitude,
                 )
                 events.append(event)
             except (ValueError, TypeError) as e:
@@ -152,6 +169,30 @@ class EventService:
 
         row = self.df.iloc[event_id]
         try:
+            # Безопасное извлечение числовых значений
+            events_count = row.get("events", 0)
+            fatalities_count = row.get("fatalities", 0)
+            population_exp = row.get("population_exposure", 0)
+            latitude = row.get("lat", 0.0)
+            longitude = row.get("lon", 0.0)
+
+            # Конвертируем в числа, если это еще не сделано
+            events_count = int(events_count) if pd.notna(events_count) else 0
+            fatalities_count = (
+                int(fatalities_count) if pd.notna(fatalities_count) else 0
+            )
+            population_exp = int(population_exp) if pd.notna(population_exp) else 0
+            latitude = float(latitude) if pd.notna(latitude) else 0.0
+            longitude = float(longitude) if pd.notna(longitude) else 0.0
+
+            # Безопасное извлечение строковых значений
+            disorder_type_val = row.get("disorder_type", "")
+            disorder_type_val = (
+                str(disorder_type_val)
+                if pd.notna(disorder_type_val) and disorder_type_val != ""
+                else None
+            )
+
             return EventOut(
                 id=event_id,
                 region=str(row.get("region", "")),
@@ -159,62 +200,13 @@ class EventService:
                 city=str(row.get("city", "")),
                 event_type=str(row.get("event_type", "")),
                 sub_event_type=str(row.get("sub_event_type", "")),
-                events=int(row.get("events", 0)),
-                fatalities=int(row.get("fatalities", 0)),
-                population_exposure=int(row.get("population_exposure", 0)),
-                disorder_type=str(row.get("disorder_type", ""))
-                if pd.notna(row.get("disorder_type"))
-                else None,
-                lat=float(row.get("lat", 0.0)),
-                lon=float(row.get("lon", 0.0)),
+                events=events_count,
+                fatalities=fatalities_count,
+                population_exposure=population_exp,
+                disorder_type=disorder_type_val,
+                lat=latitude,
+                lon=longitude,
             )
         except (ValueError, TypeError) as e:
             print(f"Ошибка при обработке события {event_id}: {e}")
             return None
-
-    def get_unique_event_types(self) -> List[str]:
-        """Возвращает список уникальных типов событий"""
-        if self.df is None or "event_type" not in self.df.columns:
-            return []
-        return self.df["event_type"].dropna().unique().tolist()
-
-    def get_unique_event_subtypes(self) -> List[str]:
-        """Возвращает список уникальных подтипов событий"""
-        if self.df is None or "sub_event_type" not in self.df.columns:
-            return []
-        return self.df["sub_event_type"].dropna().unique().tolist()
-
-    def get_unique_regions(self) -> List[str]:
-        """Возвращает список уникальных регионов"""
-        if self.df is None or "region" not in self.df.columns:
-            return []
-        return self.df["region"].dropna().unique().tolist()
-
-    def get_unique_cities(self) -> List[str]:
-        """Возвращает список уникальных городов"""
-        if self.df is None or "city" not in self.df.columns:
-            return []
-        return self.df["city"].dropna().unique().tolist()
-
-    def get_statistics(self) -> dict:
-        """Возвращает базовую статистику по данным"""
-        if self.df is None:
-            return {}
-
-        return {
-            "total_events": len(self.df),
-            "total_fatalities": int(self.df["fatalities"].sum())
-            if "fatalities" in self.df.columns
-            else 0,
-            "date_range": {
-                "start": self.df["date"].min().strftime("%Y-%m-%d")
-                if "date" in self.df.columns and pd.notna(self.df["date"].min())
-                else None,
-                "end": self.df["date"].max().strftime("%Y-%m-%d")
-                if "date" in self.df.columns and pd.notna(self.df["date"].max())
-                else None,
-            },
-            "unique_regions": len(self.get_unique_regions()),
-            "unique_cities": len(self.get_unique_cities()),
-            "unique_event_types": len(self.get_unique_event_types()),
-        }

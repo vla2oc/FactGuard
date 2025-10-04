@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers.event import events_router
+from app.routers.event import events_router
 
 import uvicorn
 
@@ -10,6 +10,7 @@ app = FastAPI(
     title="Ukraine Events API",
     description="API для отображения событий на территории Украины",
     version="1.0.0",
+    prefix="/api/",
 )
 
 # Настройка CORS для фронтенда
