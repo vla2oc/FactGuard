@@ -27,7 +27,7 @@ pydantic_core==2.33.2
 Pygments==2.19.2
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.1
-python-multipart==0.0.10
+python-multipart==0.0.20
 pytz==2025.2
 PyYAML==6.0.3
 rich==14.1.0
@@ -43,6 +43,6 @@ typing-inspection==0.4.2
 typing_extensions==4.15.0
 tzdata==2025.2
 urllib3==2.5.0
-uvicorn==0.32.0
+uvicorn==0.37.0
 watchfiles==1.1.0
 websockets==15.0.1

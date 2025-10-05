@@ -5,6 +5,10 @@
   padding: 0;
   
 }
+.leaflet-pane.leaflet-tooltip-pane { z-index: 2001 !important; }
+.leaflet-pane.leaflet-popup-pane  { z-index: 2002 !important; }
+
+
 
 @layer base {
   :root {
